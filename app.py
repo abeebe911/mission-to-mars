@@ -1,4 +1,4 @@
-#Flask to render a template
+# we'll use Flask to render a template
 from flask import Flask, render_template
 #use PyMongo to interact with our Mongo database
 from flask_pymongo import PyMongo
@@ -12,6 +12,7 @@ app = Flask(__name__)
 # Use flask_pymongo to set up mongo connection
 app.config['MONGO_URI'] = 'mongodb://localhost:27017/mars_app'
 mongo = PyMongo(app)
+
 
 #define route for html page
 @app.route('/')
