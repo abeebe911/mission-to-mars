@@ -1,16 +1,16 @@
 # Import Splinter, BeautifulSoup, and Pandas
 from splinter import Browser
-from bs4 import BeautifulSoup
-from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup as soup
 import pandas as pd
 import datetime as dt
 
+
 def scrape_all():
     # Initiate headless driver for deployment
-    
-    browser = Browser("chrome", executable_path="chromedriver", headless=False)
+    browser = Browser("chrome", executable_path="chromedriver", headless=True)
 
     news_title, news_paragraph = mars_news(browser)
+    hemisphere_image_urls = scrape(browser)
 
     # Run all scraping functions and store results in a dictionary
     data = {
@@ -19,13 +19,14 @@ def scrape_all():
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
         "last_modified": dt.datetime.now(),
-        "title": title,                                            
-        "img_url":  hemisphere_img_url
+        "image": hemisphere_image_urls
     }
 
     # Stop webdriver and return data
     browser.quit()
     return data
+    
+
 
 def mars_news(browser):
 
@@ -39,7 +40,7 @@ def mars_news(browser):
 
     # Convert the browser html to a soup object and then quit the browser
     html = browser.html
-    news_soup = BeautifulSoup(html, 'html.parser')
+    news_soup = soup(html, 'html.parser')
 
     # Add try/except for error handling
     try:
@@ -53,6 +54,7 @@ def mars_news(browser):
         return None, None
 
     return news_title, news_p
+
 
 def featured_image(browser):
     # Visit URL
@@ -70,7 +72,7 @@ def featured_image(browser):
 
     # Parse the resulting html with soup
     html = browser.html
-    img_soup = BeautifulSoup(html, 'html.parser')
+    img_soup = soup(html, 'html.parser')
 
     # Add try/except for error handling
     try:
@@ -101,42 +103,43 @@ def mars_facts():
     # Convert dataframe into HTML format, add bootstrap
     return df.to_html(classes="table table-striped")
 
-url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
+def scrape(browser):
+    url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
+    browser.visit(url)
 
-short_url = 'https://astrogeology.usgs.gov'
+    # 2. Create a list to hold the images and titles.
+    hemisphere_image_urls = []
 
-# 2. Create a list to hold the images and titles.
-executable_path = {'executable_path': ChromeDriverManager().install()}
-browser = Browser('chrome', **executable_path, headless=False)
-browser.visit(url)
-html = browser.html
-img = BeautifulSoup(html, 'html.parser')
-main_url = img.find_all('div', class_ ='item')
-titles=[]
-hemisphere_img_urls=[]
-
-for x in main_url:
-    title = x.find('h3').text
-    url = x.find('a')['href']
-    hem_img_url= short_url + url
-    #print(hem_img_url)
-    browser.visit(hem_img_url)
+    # 3. Write code to retrieve the image urls and titles for each hemisphere.
     html = browser.html
-    soup = BeautifulSoup(html, 'html.parser')
-    hemisphere_img_original= soup.find('div',class_='downloads')
-    hemisphere_img_url=hemisphere_img_original.find('a')['href']
+    html_soup = soup(html, 'html.parser')
+
+    images = html_soup.find_all('div', class_='item')
+
+    base_url = 'https://astrogeology.usgs.gov'
+    for item in images:
+        
+        hemispheres ={}
+        # get link to each image page
+        image_url = base_url+item.find('a').get('href')
+        browser.visit(image_url)
+        
+        # from each image page get full resolution image url and title
+        image_html_soup = soup(browser.html, 'html.parser')
+        link = base_url+image_html_soup.find('img', class_='wide-image').get('src')
+        
+        hemispheres['img_url'] = link
+        # get title
+        title = image_html_soup.find('h2', class_='title').text
+        hemispheres['title'] = title
+        
+        hemisphere_image_urls.append(hemispheres)
+        browser.back()
     
-    print(hemisphere_img_url)
-    img_data=dict({'title':title, 'img_url':hemisphere_img_url})
-    hemisphere_img_urls.append(img_data)
-
-# 4. Print the list that holds the dictionary of each image url and title.
-hemisphere_img_urls
-
-# 5. Quit the browser
-browser.quit()
+    return hemisphere_image_urls
 
 if __name__ == "__main__":
 
     # If running as script, print scraped data
     print(scrape_all())
+
