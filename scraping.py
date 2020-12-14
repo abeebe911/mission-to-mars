@@ -1,14 +1,14 @@
 # Import Splinter, BeautifulSoup, and Pandas
 from splinter import Browser
-from bs4 import BeautifulSoup as soup
+from bs4 import BeautifulSoup
 from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import datetime as dt
 
 def scrape_all():
     # Initiate headless driver for deployment
-    executable_path = {'executable_path': '/Users/alexanderbeebe/.wdm/drivers/chromedriver/mac64/87.0.4280.88/chromedriver'}
-    browser = Browser('chrome', **executable_path)
+    
+    browser = Browser("chrome", executable_path="chromedriver", headless=False)
 
     news_title, news_paragraph = mars_news(browser)
 
@@ -18,7 +18,9 @@ def scrape_all():
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
-        "last_modified": dt.datetime.now()
+        "last_modified": dt.datetime.now(),
+        "title": title,                                            
+        "img_url":  hemisphere_img_url
     }
 
     # Stop webdriver and return data
@@ -37,7 +39,7 @@ def mars_news(browser):
 
     # Convert the browser html to a soup object and then quit the browser
     html = browser.html
-    news_soup = soup(html, 'html.parser')
+    news_soup = BeautifulSoup(html, 'html.parser')
 
     # Add try/except for error handling
     try:
@@ -68,7 +70,7 @@ def featured_image(browser):
 
     # Parse the resulting html with soup
     html = browser.html
-    img_soup = soup(html, 'html.parser')
+    img_soup = BeautifulSoup(html, 'html.parser')
 
     # Add try/except for error handling
     try:
@@ -98,6 +100,41 @@ def mars_facts():
 
     # Convert dataframe into HTML format, add bootstrap
     return df.to_html(classes="table table-striped")
+
+url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
+
+short_url = 'https://astrogeology.usgs.gov'
+
+# 2. Create a list to hold the images and titles.
+executable_path = {'executable_path': ChromeDriverManager().install()}
+browser = Browser('chrome', **executable_path, headless=False)
+browser.visit(url)
+html = browser.html
+img = BeautifulSoup(html, 'html.parser')
+main_url = img.find_all('div', class_ ='item')
+titles=[]
+hemisphere_img_urls=[]
+
+for x in main_url:
+    title = x.find('h3').text
+    url = x.find('a')['href']
+    hem_img_url= short_url + url
+    #print(hem_img_url)
+    browser.visit(hem_img_url)
+    html = browser.html
+    soup = BeautifulSoup(html, 'html.parser')
+    hemisphere_img_original= soup.find('div',class_='downloads')
+    hemisphere_img_url=hemisphere_img_original.find('a')['href']
+    
+    print(hemisphere_img_url)
+    img_data=dict({'title':title, 'img_url':hemisphere_img_url})
+    hemisphere_img_urls.append(img_data)
+
+# 4. Print the list that holds the dictionary of each image url and title.
+hemisphere_img_urls
+
+# 5. Quit the browser
+browser.quit()
 
 if __name__ == "__main__":
 
